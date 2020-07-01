@@ -37,7 +37,7 @@ class MetaDataCredentialProviderTests: XCTestCase {
         defer { Environment.unset(name: ECSMetaDataClient.RelativeURIEnvironmentName) }
         
         let client = ECSMetaDataClient(httpClient: httpClient, host: "\(testServer.host):\(testServer.serverPort)")
-        let future = client!.getMetaData(on: loop)
+        let future = client!.getMetaData(on: loop, logger: AWSClient.loggingDisabled)
         
         let accessKeyId = "abc123"
         let secretAccessKey = "123abc"
@@ -119,7 +119,7 @@ class MetaDataCredentialProviderTests: XCTestCase {
         defer { Environment.unset(name: ECSMetaDataClient.RelativeURIEnvironmentName) }
         
         let client = InstanceMetaDataClient(httpClient: httpClient, host: "\(testServer.host):\(testServer.serverPort)")
-        let future = client.getMetaData(on: loop)
+        let future = client.getMetaData(on: loop, logger: AWSClient.loggingDisabled)
         
         let token = UUID().uuidString
         XCTAssertNoThrow(try testServer.processRaw { (request) -> AWSTestServer.Result<AWSTestServer.Response> in
@@ -208,7 +208,7 @@ class MetaDataCredentialProviderTests: XCTestCase {
         defer { Environment.unset(name: ECSMetaDataClient.RelativeURIEnvironmentName) }
         
         let client = InstanceMetaDataClient(httpClient: httpClient, host: "\(testServer.host):\(testServer.serverPort)")
-        let future = client.getMetaData(on: loop)
+        let future = client.getMetaData(on: loop, logger: AWSClient.loggingDisabled)
         
         XCTAssertNoThrow(try testServer.processRaw { (request) -> AWSTestServer.Result<AWSTestServer.Response> in
             // we try to use version 2, but this endpoint is not available, so we respond with 404

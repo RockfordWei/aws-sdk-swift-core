@@ -20,21 +20,22 @@ import struct Foundation.URL
 import class Foundation.DateFormatter
 import class Foundation.JSONDecoder
 
-import NIO
-import NIOHTTP1
-import NIOConcurrencyHelpers
 import AWSSignerV4
+import Logging
+import NIO
+import NIOConcurrencyHelpers
+import NIOHTTP1
 
 /// protocol to get Credentials from the Client. With this the AWSClient requests the credentials for request signing from ecs and ec2.
 public protocol MetaDataClient: CredentialProvider {
     associatedtype MetaData: ExpiringCredential & Decodable
     
-    func getMetaData(on eventLoop: EventLoop) -> EventLoopFuture<MetaData>
+    func getMetaData(on eventLoop: EventLoop, logger: Logger) -> EventLoopFuture<MetaData>
 }
 
 extension MetaDataClient {
-    public func getCredential(on eventLoop: EventLoop) -> EventLoopFuture<Credential> {
-        self.getMetaData(on: eventLoop).map { (metaData) in
+    public func getCredential(on eventLoop: EventLoop, logger: Logger) -> EventLoopFuture<Credential> {
+        self.getMetaData(on: eventLoop, logger: logger).map { (metaData) in
             metaData
         }
     }
@@ -109,7 +110,7 @@ struct ECSMetaDataClient: MetaDataClient {
         self.endpointURL    = "http://\(host)\(relativeURL)"
     }
     
-    func getMetaData(on eventLoop: EventLoop) -> EventLoopFuture<ECSMetaData> {
+    func getMetaData(on eventLoop: EventLoop, logger: Logger) -> EventLoopFuture<ECSMetaData> {
         return request(url: endpointURL, timeout: 2, on: eventLoop)
             .flatMapThrowing { response in
                 guard let body = response.body else {
@@ -180,7 +181,7 @@ struct InstanceMetaDataClient: MetaDataClient {
         self.host       = host
     }
     
-    func getMetaData(on eventLoop: EventLoop) -> EventLoopFuture<InstanceMetaData> {
+    func getMetaData(on eventLoop: EventLoop, logger: Logger) -> EventLoopFuture<InstanceMetaData> {
         return getToken(on: eventLoop)
             .map() { token in
                 HTTPHeaders([(Self.TokenHeaderName, token)])
