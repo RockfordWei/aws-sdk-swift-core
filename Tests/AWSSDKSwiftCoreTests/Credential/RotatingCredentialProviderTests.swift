@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 @testable import AWSSDKSwiftCore
+import AsyncHTTPClient
 import Logging
 import NIO
 import NIOConcurrencyHelpers
@@ -38,6 +39,8 @@ class RotatingCredentialProviderTests: XCTestCase {
     func testGetCredentialAndReuseIfStillValid() {
         let group = MultiThreadedEventLoopGroup(numberOfThreads: 1)
         defer { XCTAssertNoThrow(try group.syncShutdownGracefully()) }
+        let httpClient = HTTPClient(eventLoopGroupProvider: .shared(group))
+        defer { XCTAssertNoThrow(try httpClient.syncShutdown()) }
         let loop = group.next()
         
         let cred = TestExpiringCredential(
@@ -51,7 +54,8 @@ class RotatingCredentialProviderTests: XCTestCase {
             hitCount += 1
             return $0.makeSucceededFuture(cred)
         }
-        let provider = RotatingCredentialProvider(eventLoop: loop, provider: client)
+        let context = CredentialProviderFactory.Context(httpClient: httpClient, eventLoop: loop, logger: AWSClient.loggingDisabled)
+        let provider = RotatingCredentialProvider(context: context, provider: client)
         
         // get credentials for first time
         var returned: Credential?
@@ -76,6 +80,8 @@ class RotatingCredentialProviderTests: XCTestCase {
     func testGetCredentialHighlyConcurrent() {
         let group = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
         defer { XCTAssertNoThrow(try group.syncShutdownGracefully()) }
+        let httpClient = HTTPClient(eventLoopGroupProvider: .shared(group))
+        defer { XCTAssertNoThrow(try httpClient.syncShutdown()) }
         let loop = group.next()
         
         let cred = TestExpiringCredential(
@@ -91,7 +97,8 @@ class RotatingCredentialProviderTests: XCTestCase {
             hitCount += 1
             return promise.futureResult
         }
-        let provider = RotatingCredentialProvider(eventLoop: loop, provider: client)
+        let context = CredentialProviderFactory.Context(httpClient: httpClient, eventLoop: loop, logger: AWSClient.loggingDisabled)
+        let provider = RotatingCredentialProvider(context: context, provider: client)
         
         var resultFutures = [EventLoopFuture<Void>]()
         var setupFutures = [EventLoopFuture<Void>]()
@@ -136,6 +143,8 @@ class RotatingCredentialProviderTests: XCTestCase {
     func testAlwaysGetNewTokenIfTokenLifetimeForUseIsShorterThanLifetime() {
         let group = MultiThreadedEventLoopGroup(numberOfThreads: 1)
         defer { XCTAssertNoThrow(try group.syncShutdownGracefully()) }
+        let httpClient = HTTPClient(eventLoopGroupProvider: .shared(group))
+        defer { XCTAssertNoThrow(try httpClient.syncShutdown()) }
         let loop = group.next()
         
         var hitCount = 0
@@ -148,7 +157,8 @@ class RotatingCredentialProviderTests: XCTestCase {
                 expiration: Date(timeIntervalSinceNow: 60 * 2))
             return eventLoop.makeSucceededFuture(cred)
         }
-        let provider = RotatingCredentialProvider(eventLoop: loop, provider: client)
+        let context = CredentialProviderFactory.Context(httpClient: httpClient, eventLoop: loop, logger: AWSClient.loggingDisabled)
+        let provider = RotatingCredentialProvider(context: context, provider: client)
         
         let iterations = 100
         for _ in 0..<100 {

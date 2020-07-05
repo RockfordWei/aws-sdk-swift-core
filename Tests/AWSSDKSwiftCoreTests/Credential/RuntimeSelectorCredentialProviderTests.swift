@@ -22,7 +22,7 @@ class RuntimeSelectorCredentialProviderTests: XCTestCase {
     func testSetupFail() {
         let client = createAWSClient(credentialProvider: .selector(.custom {_ in return NullCredentialProvider()} ))
         defer { XCTAssertNoThrow(try client.syncShutdown()) }
-        let futureResult = client.credentialProvider.getCredential(on: client.eventLoopGroup.next())
+        let futureResult = client.credentialProvider.getCredential(on: client.eventLoopGroup.next(), logger: AWSClient.loggingDisabled)
         XCTAssertThrowsError(try futureResult.wait()) { error in
             switch error {
             case let error as CredentialProviderError where error == CredentialProviderError.noProvider:
@@ -45,7 +45,7 @@ class RuntimeSelectorCredentialProviderTests: XCTestCase {
 
         let client = createAWSClient(credentialProvider: .selector(.environment, .empty))
         defer { XCTAssertNoThrow(try client.syncShutdown()) }
-        let futureResult = client.credentialProvider.getCredential(on: client.eventLoopGroup.next()).flatMapThrowing { credential in
+        let futureResult = client.credentialProvider.getCredential(on: client.eventLoopGroup.next(), logger: AWSClient.loggingDisabled).flatMapThrowing { credential in
             XCTAssertEqual(credential.accessKeyId, accessKeyId)
             XCTAssertEqual(credential.secretAccessKey, secretAccessKey)
             XCTAssertEqual(credential.sessionToken, sessionToken)
@@ -65,7 +65,7 @@ class RuntimeSelectorCredentialProviderTests: XCTestCase {
         let provider: CredentialProviderFactory = .selector(.environment)
         let client = createAWSClient(credentialProvider: provider)
         defer { XCTAssertNoThrow(try client.syncShutdown()) }
-        let futureResult = client.credentialProvider.getCredential(on: client.eventLoopGroup.next())
+        let futureResult = client.credentialProvider.getCredential(on: client.eventLoopGroup.next(), logger: AWSClient.loggingDisabled)
         XCTAssertThrowsError(try futureResult.wait()) { error in
             switch error {
             case let error as CredentialProviderError where error == CredentialProviderError.noProvider:
@@ -80,7 +80,7 @@ class RuntimeSelectorCredentialProviderTests: XCTestCase {
         let provider: CredentialProviderFactory = .selector(.empty, .environment)
         let client = createAWSClient(credentialProvider: provider)
         defer { XCTAssertNoThrow(try client.syncShutdown()) }
-        let futureResult = client.credentialProvider.getCredential(on: client.eventLoopGroup.next()).flatMapThrowing { credential in
+        let futureResult = client.credentialProvider.getCredential(on: client.eventLoopGroup.next(), logger: AWSClient.loggingDisabled).flatMapThrowing { credential in
             XCTAssertEqual(credential.accessKeyId, "")
             XCTAssertEqual(credential.secretAccessKey, "")
             XCTAssertEqual(credential.sessionToken, nil)
@@ -94,7 +94,7 @@ class RuntimeSelectorCredentialProviderTests: XCTestCase {
         let provider: CredentialProviderFactory = .selector(.empty)
         let client = createAWSClient(credentialProvider: provider)
         defer { XCTAssertNoThrow(try client.syncShutdown()) }
-        let futureResult = client.credentialProvider.getCredential(on: client.eventLoopGroup.next()).flatMapThrowing { credential in
+        let futureResult = client.credentialProvider.getCredential(on: client.eventLoopGroup.next(), logger: AWSClient.loggingDisabled).flatMapThrowing { credential in
             XCTAssert(credential.isEmpty())
             XCTAssert(client.credentialProvider is StaticCredential)
         }
@@ -112,7 +112,7 @@ class RuntimeSelectorCredentialProviderTests: XCTestCase {
 
         let customECS: CredentialProviderFactory = .custom { context in 
             if let client = ECSMetaDataClient(httpClient: context.httpClient, host: "\(testServer.host):\(testServer.serverPort)") {
-                return RotatingCredentialProvider(eventLoop: context.eventLoop, provider: client)
+                return RotatingCredentialProvider(context: context, provider: client)
             }
             // fallback
             return NullCredentialProvider()
@@ -147,7 +147,7 @@ class RuntimeSelectorCredentialProviderTests: XCTestCase {
             return .result(.init(httpStatus: .ok, body: byteButter), continueProcessing: false)
         })
 
-        let futureResult = client.credentialProvider.getCredential(on: client.eventLoopGroup.next()).flatMapThrowing { credential in
+        let futureResult = client.credentialProvider.getCredential(on: client.eventLoopGroup.next(), logger: AWSClient.loggingDisabled).flatMapThrowing { credential in
             XCTAssertEqual(credential.accessKeyId, accessKeyId)
             XCTAssertEqual(credential.secretAccessKey, secretAccessKey)
             XCTAssertEqual(credential.sessionToken, sessionToken)
@@ -164,7 +164,7 @@ class RuntimeSelectorCredentialProviderTests: XCTestCase {
         let provider: CredentialProviderFactory = .selector(.ecs)
         let client = createAWSClient(credentialProvider: provider)
         defer { XCTAssertNoThrow(try client.syncShutdown()) }
-        let futureResult = client.credentialProvider.getCredential(on: client.eventLoopGroup.next())
+        let futureResult = client.credentialProvider.getCredential(on: client.eventLoopGroup.next(), logger: AWSClient.loggingDisabled)
         XCTAssertThrowsError(try futureResult.wait()) { error in
             switch error {
             case let error as CredentialProviderError where error == CredentialProviderError.noProvider:
@@ -188,7 +188,7 @@ class RuntimeSelectorCredentialProviderTests: XCTestCase {
 
         let client = createAWSClient(credentialProvider: .selector(.configFile(credentialsFilePath: filename), .empty))
         defer { XCTAssertNoThrow(try client.syncShutdown()) }
-        let futureResult = client.credentialProvider.getCredential(on: client.eventLoopGroup.next()).flatMapThrowing { credential in
+        let futureResult = client.credentialProvider.getCredential(on: client.eventLoopGroup.next(), logger: AWSClient.loggingDisabled).flatMapThrowing { credential in
             XCTAssertEqual(credential.accessKeyId, "AWSACCESSKEYID")
             XCTAssertEqual(credential.secretAccessKey, "AWSSECRETACCESSKEY")
             XCTAssertEqual(credential.sessionToken, nil)
@@ -201,7 +201,7 @@ class RuntimeSelectorCredentialProviderTests: XCTestCase {
     func testConfigFileProviderFail() {
         let client = createAWSClient(credentialProvider: .selector(.configFile(credentialsFilePath: "nonExistentCredentialFile"), .empty))
         defer { XCTAssertNoThrow(try client.syncShutdown()) }
-        let futureResult = client.credentialProvider.getCredential(on: client.eventLoopGroup.next()).flatMapThrowing { credential in
+        let futureResult = client.credentialProvider.getCredential(on: client.eventLoopGroup.next(), logger: AWSClient.loggingDisabled).flatMapThrowing { credential in
             let internalProvider = try XCTUnwrap((client.credentialProvider as? RuntimeSelectorCredentialProvider)?.internalProvider)
             XCTAssert(internalProvider is StaticCredential)
             XCTAssert((internalProvider as? StaticCredential)?.isEmpty() == true)

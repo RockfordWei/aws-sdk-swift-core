@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Logging
 import NIO
 import NIOConcurrencyHelpers
 
@@ -42,13 +43,13 @@ class RuntimeSelectorCredentialProvider: CredentialProvider {
         _ = try startupPromise.futureResult.wait()
     }
     
-    func getCredential(on eventLoop: EventLoop) -> EventLoopFuture<Credential> {
+    func getCredential(on eventLoop: EventLoop, logger: Logger) -> EventLoopFuture<Credential> {
         if let provider = self.internalProvider {
-            return provider.getCredential(on: eventLoop)
+            return provider.getCredential(on: eventLoop, logger: logger)
         }
         
         return self.startupPromise.futureResult.hop(to: eventLoop).flatMap { provider in
-            return provider.getCredential(on: eventLoop)
+            return provider.getCredential(on: eventLoop, logger: logger)
         }
     }
     
@@ -62,7 +63,7 @@ class RuntimeSelectorCredentialProvider: CredentialProvider {
             }
             let providerFactory = providers[index]
             let provider = providerFactory.createProvider(context: context)
-            provider.getCredential(on: context.eventLoop).whenComplete { result in
+            provider.getCredential(on: context.eventLoop, logger: context.logger).whenComplete { result in
                 switch result {
                 case .success:
                     self._internalProvider = provider
