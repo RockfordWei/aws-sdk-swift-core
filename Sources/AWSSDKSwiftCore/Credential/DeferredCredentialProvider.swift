@@ -66,3 +66,7 @@ public class DeferredCredentialProvider: CredentialProvider {
         return self.startupPromise.futureResult.hop(to: eventLoop)
     }
 }
+
+extension DeferredCredentialProvider: CustomStringConvertible {
+    public var description: String { return "\(type(of:self))(\(type(of:provider)))"}
+}
